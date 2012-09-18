@@ -1,0 +1,28 @@
+{
+	"name": "anvil.jshint",
+	"author": "Elijah Manor <elijah.manor@gmail.com> (http://elijahmanor.com)",
+	"description": "JSHint plugin for anvil.js",
+	"version": "0.0.1",
+	"contributors": [],
+	"repository": {
+		"type": "git",
+		"url": "git://github.com/elijahmanor/anvil.jshint.git"
+	},
+	"engines": {
+		"node": "~0.8.3"
+	},
+	"main": "./lib/plugin.js",
+	"dependencies": {
+		"jshint": "",
+		"underscore.string": ""
+	},
+	"devDependencies": {
+		"anvil.js": ">=0.8.4",
+		"anvil.mocha": "",
+		"underscore": ">=1.0.0",
+		"should": "~1.1",
+		"jshint": ""
+	},
+	"optionalDependencies": {},
+	"keywords": [ "anvil", "jshint" ]
+}
