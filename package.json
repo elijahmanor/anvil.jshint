@@ -14,13 +14,14 @@
 	"main": "./lib/plugin.js",
 	"dependencies": {
 		"jshint": "",
-		"underscore.string": ""
+		"underscore.string": "",
+		"expect.js": ""
 	},
 	"devDependencies": {
 		"anvil.js": ">=0.8.4",
 		"anvil.mocha": "",
 		"underscore": ">=1.0.0",
-		"should": "~1.1",
+		"expect.js": "",
 		"jshint": ""
 	},
 	"optionalDependencies": {},

@@ -12,7 +12,7 @@ var jslintFactory = function( _, anvil ) {
 		exclusive: false,
 		fileList: [],
 		commander: [
-			[ "-lint, --jslint", "JSHint all JavaScript files" ]
+			[ "-hint, --jshint", "JSHint all JavaScript files" ]
 		],
 
 		configure: function( config, command, done ) {
