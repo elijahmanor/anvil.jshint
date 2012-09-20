@@ -19,8 +19,8 @@
 	},
 	"devDependencies": {
 		"underscore": ">=1.0.0",
-		"expect.js": "",
-		"jshint": ""
+		"expect.js": "0.1.2",
+		"jshint": "0.9.0"
 	},
 	"optionalDependencies": {},
 	"keywords": [ "anvil", "jshint" ]
