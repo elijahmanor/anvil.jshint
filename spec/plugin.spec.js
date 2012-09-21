@@ -19,6 +19,8 @@ describe( "When linting a good JavaScript file", function() {
 	it( "should log a success message to the eventLog", function() {
 		var log = api.log.eventLog;
 
+		expect( api ).to.be.ok();
+		expect( api.log ).to.be.ok();
 		expect( log ).to.be.an( "array" );
 		expect( log ).to.have.length( 1 );
 		expect( log[0] ).to.be( "No issues Found." );
