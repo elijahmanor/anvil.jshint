@@ -2,7 +2,6 @@ var jshint = require( "jshint" ).JSHINT;
 
 /*
  * TODO: .jshintrc in pwd then all way up, then $HOME
- * TODO: support plugin level config
  * TODO: get unit tests working (wait for anvil feature)
  * TODO: make options/globals be on a per folder basis
  */
