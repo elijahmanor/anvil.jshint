@@ -90,7 +90,7 @@ var jshintFactory = function( _, anvil ) {
 				});
 				anvil.scheduler.pipeline( undefined, transforms, function() {
 					if ( that.breakBuild === true &&
-						_.isNumber( numberOfErrors ) && numberOfErrors > 0 ) {
+						_.isNumber( totalErrors ) && totalErrors > 0 ) {
 						anvil.events.raise( "build.stop", "project has " + totalErrors + " error(s)!" );
 					}
 					done();
@@ -127,7 +127,7 @@ var jshintFactory = function( _, anvil ) {
 
 		lintContent: function( content, done ) {
 			var result = jshint( content, this.settings.options || {}, this.settings.globals || {} ),
-				validErrors;
+				validErrors = [];
 
 			if ( result ) {
 				anvil.log.event( "No issues Found." );
