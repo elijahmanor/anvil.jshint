@@ -4,6 +4,8 @@ var jshint = require( "jshint" ).JSHINT;
  * TODO: .jshintrc in pwd then all way up, then $HOME
  * TODO: get unit tests working (wait for anvil feature)
  * TODO: make options/globals be on a per folder basis
+ * TODO: make option for ignore specific errors
+ * TODO: make option to break the build on error
  */
 
 var jshintFactory = function( _, anvil ) {
@@ -16,6 +18,7 @@ var jshintFactory = function( _, anvil ) {
 		all: false,
 		inclusive: false,
 		exclusive: false,
+		breakBuild: true,
 		fileList: [],
 		commander: [
 			[ "-hint, --jshint", "JSHint all JavaScript files" ]
@@ -33,10 +36,12 @@ var jshintFactory = function( _, anvil ) {
 					this.exclusive = true;
 					this.fileList = this.config.exclude;
 				}
+				this.settings = this.getSettings( this.config );
+				this.breakBuild = this.config.breakBuild === false ?
+					this.config.breakBuild : this.breakBuild;
 			} else if ( command.jshint ) {
 				this.all = true;
 			}
-			this.settings = this.getSettings( this.config );
 
 			done();
 		},
@@ -56,7 +61,11 @@ var jshintFactory = function( _, anvil ) {
 		},
 
 		run: function( done ) {
-			var jsFiles = [], options = {}, that = this, transforms;
+			var jsFiles = [],
+				options = {},
+				that = this,
+				numberOfErrors = 0,
+				transforms;
 
 			if ( this.inclusive ) {
 				jsFiles = _.filter( anvil.project.files, this.anyFile( this.fileList ) );
@@ -73,10 +82,19 @@ var jshintFactory = function( _, anvil ) {
 				anvil.log.step( "Linting " + jsFiles.length + " files" );
 				transforms = _.map( jsFiles, function( file ) {
 					return function( done ) {
-						that.lint( file, done );
+						that.lint( file, function( errors ) {
+							numberOfErrors += errors.length;
+							done();
+						});
 					};
 				});
-				anvil.scheduler.pipeline( undefined, transforms, done );
+				anvil.scheduler.pipeline( undefined, transforms, function() {
+					if ( that.breakBuild === true &&
+						_.isNumber( numberOfErrors ) && numberOfErrors > 0 ) {
+						anvil.events.raise( "build.stop", "project has " + numberOfErrors + " error(s)!" );
+					}
+					done();
+				});
 			} else {
 				done();
 			}
@@ -97,10 +115,12 @@ var jshintFactory = function( _, anvil ) {
 			anvil.log.event( "Linting '"+ file.fullPath + "'" );
 			anvil.fs.read( [ file.fullPath ], function( content, err ) {
 				if ( !err ) {
-					that.lintContent( content, done );
+					that.lintContent( content, function( errors ) {
+						done( errors );
+					});
 				} else {
 					anvil.log.error( "Error reading " + file.fullPath + " for linting: \n" + err.stack  );
-					done();
+					done({});
 				}
 			});
 		},
@@ -111,13 +131,14 @@ var jshintFactory = function( _, anvil ) {
 			if ( result ) {
 				anvil.log.event( "No issues Found." );
 			} else {
+				anvil.log.error( "error[ 0 ]: " + JSON.stringify( jshint.errors[ 0 ] ) );
 				_.each( this.processErrors( jshint.errors ), function( error ) {
 					anvil.log.error( error );
 				});
 				anvil.log.event( jshint.errors.length + " issue(s) Found." );
 			}
 
-			done();
+			done( jshint.errors );
 		},
 
 		processErrors: function( errors ) {
