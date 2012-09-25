@@ -80,6 +80,23 @@ If you had 5 JavaScript files in your `src` folder and you wanted most of them t
 }
 ```
 
+#### Breaking Build Option
+
+By default if there are any errors that JSHint returns then the build process will be aborted. You can override this option by providing setting the `breakBuild` to `false`.
+
+```javascript
+{
+	"source": "src",
+	"spec": "spec",
+	"output": [ "build" ],
+	"dependencies" : [ "anvil.jshint" ],
+	"anvil.jshint": {
+		"all": true,
+		"breakBuild": false
+	}
+}
+```
+
 #### JSLint Settings
 
 You can always provide custom JSHint and global comments to the top of each of your JavaScript file to tweak it's lint settings, but that can be redundant and a nuisance. So, you can provide these common settings in your 'anvil.jshint' settings to be used during the linting process.
