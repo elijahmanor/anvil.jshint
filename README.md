@@ -120,7 +120,7 @@ Sometimes there are JSHint errors that for one reason or another you want ignore
 The following option ignores reason for line 81 and character 26
 
 ```javascript
-	{ "line": 81, "character": 26, "reason": "'someVariable' is already defined." }
+{ "line": 81, "character": 26, "reason": "'someVariable' is already defined." }
 ```
 
 The following option ignores any error on line 81 and character 12
@@ -132,19 +132,19 @@ The following option ignores any error on line 81 and character 12
 The following option ignores reason anywhere on line 81
 
 ```javascript
-	{ "line": 81, "reason": "'someVariable' is already defined." }
+{ "line": 81, "reason": "'someVariable' is already defined." }
 ```
 
 The following option ignores any errors on line 81
 
 ```javascript
-	{ "line": 81 }
+{ "line": 81 }
 ```
 
 The following option ignores any errors matching reason anywhere in the file
 
 ```javascript
-	{ "reason": "literal notation" }
+{ "reason": "literal notation" }
 ```
 
 #### JSLint Settings
