@@ -101,3 +101,9 @@ You can always provide custom JSHint and global comments to the top of each of y
 	}
 }
 ```
+
+## Uninstallation
+
+```text
+	anvil uninstall anvil.jshint
+```

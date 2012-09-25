@@ -23,7 +23,7 @@ var jshintFactory = function( _, anvil ) {
 		settings: {},
 
 		configure: function( config, command, done ) {
-			if ( this.config ) {
+			if ( !_.isEmpty( this.config ) ) {
 				if ( this.config.all ) {
 					this.all = true;
 				} else if ( this.config.include && this.config.include.length  ) {
@@ -33,11 +33,10 @@ var jshintFactory = function( _, anvil ) {
 					this.exclusive = true;
 					this.fileList = this.config.exclude;
 				}
-
-				this.settings = this.getSettings( this.config );
 			} else if ( command.jshint ) {
 				this.all = true;
 			}
+			this.settings = this.getSettings( this.config );
 
 			done();
 		},
