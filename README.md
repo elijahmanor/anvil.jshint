@@ -97,6 +97,56 @@ By default if there are any errors that JSHint returns then the build process wi
 }
 ```
 
+#### Ignore Specific Errors
+
+Sometimes there are JSHint errors that for one reason or another you want ignored by the build process. To do that you can provide an `ignoreList` option with a list of all the errors that you feel are acceptable for your project. You list the `line`, `character`, and `reason` (contains) of each error you'd like to ignore. You can provide a combination of these options for more or less flexibility.
+
+```javascript
+{
+	"source": "src",
+	"spec": "spec",
+	"output": [ "build" ],
+	"dependencies" : [ "anvil.jshint" ],
+	"anvil.jshint": {
+		"all": true,
+		"ignoreList": [
+			{ "line": 81, "character": 26, "reason": "'someVariable' is already defined." },
+			... other options ...
+		]
+	}
+}
+```
+
+The following option ignores reason for line 81 and character 26
+
+```javascript
+	{ "line": 81, "character": 26, "reason": "'someVariable' is already defined." }
+```
+
+The following option ignores any error on line 81 and character 12
+
+```javascript
+{ "line": 81, "character": 12 }
+```
+
+The following option ignores reason anywhere on line 81
+
+```javascript
+	{ "line": 81, "reason": "'someVariable' is already defined." }
+```
+
+The following option ignores any errors on line 81
+
+```javascript
+	{ "line": 81 }
+```
+
+The following option ignores any errors matching reason anywhere in the file
+
+```javascript
+	{ "reason": "literal notation" }
+```
+
 #### JSLint Settings
 
 You can always provide custom JSHint and global comments to the top of each of your JavaScript file to tweak it's lint settings, but that can be redundant and a nuisance. So, you can provide these common settings in your 'anvil.jshint' settings to be used during the linting process.

@@ -2,7 +2,7 @@
 	"name": "anvil.jshint",
 	"author": "Elijah Manor <elijah.manor@gmail.com> (http://elijahmanor.com)",
 	"description": "JSHint plugin for anvil.js",
-	"version": "0.0.3",
+	"version": "0.0.4",
 	"contributors": [],
 	"repository": {
 		"type": "git",
