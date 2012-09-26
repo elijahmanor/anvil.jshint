@@ -147,7 +147,7 @@ The following option ignores any errors matching reason anywhere in the file
 { "reason": "literal notation" }
 ```
 
-#### JSLint Settings
+#### JSHint Settings
 
 You can always provide custom JSHint and global comments to the top of each of your JavaScript file to tweak it's lint settings, but that can be redundant and a nuisance. So, you can provide these common settings in your 'anvil.jshint' settings to be used during the linting process.
 
