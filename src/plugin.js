@@ -1,10 +1,15 @@
 var jshint = require( "jshint" ).JSHINT;
+var colors = require( "colors" );
+var MessageFormat = require( "messageformat" );
 
-/*
- * TODO: .jshintrc in pwd then all way up, then $HOME
- * TODO: get unit tests working (wait for anvil feature)
- * TODO: make options/globals be on a per folder basis
- */
+colors.setTheme({
+	verbose: "cyan",
+	info: "green",
+	warn: "yellow",
+	debug: "blue",
+	error: "red",
+	data: "grey"
+});
 
 var jshintFactory = function( _, anvil ) {
 	_.str = require( "underscore.string" );
@@ -23,6 +28,7 @@ var jshintFactory = function( _, anvil ) {
 			[ "-hint, --jshint", "JSHint all JavaScript files" ]
 		],
 		settings: {},
+		messageFormat: new MessageFormat( "en" ),
 
 		configure: function( config, command, done ) {
 			if ( !_.isEmpty( this.config ) ) {
@@ -65,7 +71,7 @@ var jshintFactory = function( _, anvil ) {
 				options = {},
 				that = this,
 				totalErrors = 0,
-				transforms;
+				transforms, message;
 
 			if ( this.inclusive ) {
 				jsFiles = _.filter( anvil.project.files, this.anyFile( this.fileList ) );
@@ -79,7 +85,8 @@ var jshintFactory = function( _, anvil ) {
 			}
 
 			if ( jsFiles.length > 0 ) {
-				anvil.log.step( "Linting " + jsFiles.length + " files" );
+				message = this.messageFormat.compile( "Linting {NUM_RESULTS, plural, one{one file} other{# files}}." );
+				anvil.log.step( message({ "NUM_RESULTS": jsFiles.length }) );
 				transforms = _.map( jsFiles, function( file ) {
 					return function( done ) {
 						that.lint( file, function( numberOfErrors ) {
@@ -91,7 +98,8 @@ var jshintFactory = function( _, anvil ) {
 				anvil.scheduler.pipeline( undefined, transforms, function() {
 					if ( that.breakBuild === true &&
 						_.isNumber( totalErrors ) && totalErrors > 0 ) {
-						anvil.events.raise( "build.stop", "project has " + totalErrors + " error(s)!" );
+						message = that.messageFormat.compile( "project {NUM_RESULTS, plural, one{one error} other{# errors}}!" );
+						anvil.events.raise( "build.stop", message({ "NUM_RESULTS": totalErrors }) );
 					}
 					done();
 				});
@@ -115,7 +123,7 @@ var jshintFactory = function( _, anvil ) {
 			anvil.log.event( "Linting '"+ file.fullPath + "'" );
 			anvil.fs.read( [ file.fullPath ], function( content, err ) {
 				if ( !err ) {
-					that.lintContent( content, function( numberOfErrors ) {
+					that.lintContent( file, content, function( numberOfErrors ) {
 						done( numberOfErrors );
 					});
 				} else {
@@ -125,27 +133,30 @@ var jshintFactory = function( _, anvil ) {
 			});
 		},
 
-		lintContent: function( content, done ) {
+		lintContent: function( file, content, done ) {
 			var result = jshint( content, this.settings.options || {}, this.settings.globals || {} ),
-				validErrors = [];
+				validErrors = [], ignoredErrors = 0;
 
 			if ( result ) {
 				anvil.log.event( "No issues Found." );
 			} else {
-				validErrors = this.processErrors( jshint.errors, this.ignore );
+				validErrors = this.processErrors( file, jshint.errors, this.ignore );
 				_.each( validErrors, function( error ) {
 					anvil.log.error( error );
 				});
-				anvil.log.event( validErrors.length + " issue(s) found." );
-				if ( this.ignore.length ) {
-					anvil.log.event( jshint.errors.length - validErrors.length + " issues(s) ignored." );
+				message = this.messageFormat.compile( "{NUM_RESULTS, plural, one{# issue} other{# issues}} found." );
+				anvil.log.event( message({ "NUM_RESULTS": validErrors.length }) );
+				ignoredErrors = jshint.errors.length - validErrors.length;
+				if ( this.ignore.length && ignoredErrors ) {
+					message = this.messageFormat.compile( "{NUM_RESULTS, plural, one{# issue} other{# issues}} ignored." );
+					anvil.log.event( message({ "NUM_RESULTS": ignoredErrors }) );
 				}
 			}
 
 			done( validErrors.length );
 		},
 
-		processErrors: function( errors, ignore ) {
+		processErrors: function( file, errors, ignore ) {
 			var result = [], padding = {}, that = this;
 
 			padding = {
@@ -166,9 +177,8 @@ var jshintFactory = function( _, anvil ) {
 			_.each( errors, function( error ) {
 				if ( error ) {
 					if ( error.evidence ) {
-						if ( !that.isIgnorable( error, ignore ) ) {
-							result.push( "[" + _.lpad( error.line, padding.line, "0" ) + ":" + _.lpad( error.character, padding.character, "0" ) + "] " +
-								error.evidence.replace( /^\s*/g, "" ) + " -> " + error.reason );
+						if ( !that.isIgnorable( file, error, ignore ) ) {
+							result.push( that.formatError( error, padding ) );
 						}
 					} else {
 						result.push( "Too Many Errors!" );
@@ -179,51 +189,68 @@ var jshintFactory = function( _, anvil ) {
 			return result;
 		},
 
+		formatError: function( error, padding ) {
+			return "[L".data + _.lpad( error.line, padding.line, "0" ).data +
+				":C".data + _.lpad( error.character, padding.character, "0" ).data +
+				"] ".data + error.evidence.replace( /^\s*/g, "" ).italic.error + " -> ".data +
+				error.reason.bold.error;
+		},
+
 		/*
-		 * The following option ignores reason for line 81 and character 26
-		 * { "line": 81, "character": 26, "reason": "'someVariable' is already defined." }
+		 * The following option ignores reason for line 81 and character 26 in bad.js
+		 * { "file": "bad.js", line": 81, "character": 26, "reason": "'someVariable' is already defined." }
 		 *
-		 * The following option ignores any error on line 81 and character 12
-		 * { "line": 81, "character": 12 }
+		 * The following option ignores any error on line 81 and character 12 in bad.js
+		 * { "file": "bad.js", "line": 81, "character": 12 }
 		 *
-		 * The following option ignores reason anywhere on line 81
-		 * { "line": 81, "reason": "'someVariable' is already defined." }
+		 * The following option ignores reason anywhere on line 81 in bad.js
+		 * { "file": "bad.js", "line": 81, "reason": "'someVariable' is already defined." }
 		 *
-		 * The following option ignores any errors on line 81
-		 * { "line": 81 }
+		 * The following option ignores any errors on line 81 in bad.js
+		 * { "file": "bad.js", "line": 81 }
 		 *
-		 * The following option ignores any errors matching reason anywhere in the file
-		 * { "reason": "literal notation" }
+		 * The following option ignores any errors matching reason anywhere in bad.js
+		 * { "file": "bad.js", "reason": "literal notation" }
+		 *
+		 * The following option ignores any errors matching reason anywhere in any file
+		 * { reason": "literal notation" }
 		 */
-		isIgnorable: function( error, ignoreList ) {
+		isIgnorable: function( file, error, ignoreList ) {
 			var ignorable = false;
 
 			ignorable = _.any( ignoreList, function( ignore ) {
-				return error.line === ignore.line && error.character === ignore.character && error.reason.indexOf( ignore.reason ) > -1;
+				return file.fullPath.indexOf( ignore.file ) > -1 && error.line === ignore.line && error.character === ignore.character && error.reason.indexOf( ignore.reason ) > -1;
 			});
 			if ( !ignorable ) {
 				ignorable = _.any( ignoreList, function( ignore ) {
-					return error.line === ignore.line && error.character === ignore.character && !ignore.reason;
+					return file.fullPath.indexOf( ignore.file ) > -1 && error.line === ignore.line && error.character === ignore.character && !ignore.reason;
 				});
 			}
 			if ( !ignorable ) {
 				ignorable = _.any( ignoreList, function( ignore ) {
-					return error.line === ignore.line && !ignore.character && error.reason.indexOf( ignore.reason ) > -1;
+					return file.fullPath.indexOf( ignore.file ) > -1 && error.line === ignore.line && !ignore.character && error.reason.indexOf( ignore.reason ) > -1;
 				});
 			}
 			if ( !ignorable ) {
 				ignorable = _.any( ignoreList, function( ignore ) {
-					return error.line === ignore.line && !ignore.character && !ignore.reason;
+					return file.fullPath.indexOf( ignore.file ) > -1 && error.line === ignore.line && !ignore.character && !ignore.reason;
 				});
 			}
 			if ( !ignorable ) {
 				ignorable = _.any( ignoreList, function( ignore ) {
-					return !ignore.line && !ignore.character && error.reason.indexOf( ignore.reason ) > -1;
+					return file.fullPath.indexOf( ignore.file ) > -1 && !ignore.line && !ignore.character && error.reason.indexOf( ignore.reason ) > -1;
+				});
+			}
+			if ( !ignorable ) {
+				ignorable = _.any( ignoreList, function( ignore ) {
+					return !ignore.file && !ignore.line && !ignore.character && error.reason.indexOf( ignore.reason ) > -1;
 				});
 			}
 
 			return ignorable;
-		}
+		},
+
+		log: function() {}
 	});
 };
 

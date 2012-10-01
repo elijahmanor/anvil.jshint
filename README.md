@@ -99,7 +99,7 @@ By default if there are any errors that JSHint returns then the build process wi
 
 #### Ignore Specific Errors
 
-Sometimes there are JSHint errors that for one reason or another you want ignored by the build process. To do that you can provide an `ignoreList` option with a list of all the errors that you feel are acceptable for your project. You list the `line`, `character`, and `reason` (contains) of each error you'd like to ignore. You can provide a combination of these options for more or less flexibility.
+Sometimes there are JSHint errors that for one reason or another you want ignored by the build process. To do that you can provide an `ignore` option with a list of all the errors that you feel are acceptable for your project. You list the `line`, `character`, and `reason` (contains) of each error you'd like to ignore. You can provide a combination of these options for more or less flexibility.
 
 ```javascript
 {
@@ -109,43 +109,48 @@ Sometimes there are JSHint errors that for one reason or another you want ignore
 	"dependencies" : [ "anvil.jshint" ],
 	"anvil.jshint": {
 		"all": true,
-		"ignoreList": [
-			{ "line": 81, "character": 26, "reason": "'someVariable' is already defined." },
+		"ignore": [
+			{ "file": "bad.js", line": 81, "character": 26, "reason": "'someVariable' is already defined." },
 			... other options ...
 		]
 	}
 }
 ```
 
-The following option ignores reason for line 81 and character 26
+The following option ignores reason for line 81 and character 26 in bad.js
 
 ```javascript
-{ "line": 81, "character": 26, "reason": "'someVariable' is already defined." }
+{ "file": "bad.js", line": 81, "character": 26, "reason": "'someVariable' is already defined." }
 ```
 
-The following option ignores any error on line 81 and character 12
+The following option ignores any error on line 81 and character 12 in bad.js
 
 ```javascript
-{ "line": 81, "character": 12 }
+{ "file": "bad.js", "line": 81, "character": 12 }
 ```
 
-The following option ignores reason anywhere on line 81
+The following option ignores reason anywhere on line 81 in bad.js
 
 ```javascript
-{ "line": 81, "reason": "'someVariable' is already defined." }
+{ "file": "bad.js", "line": 81, "reason": "'someVariable' is already defined." }
 ```
 
-The following option ignores any errors on line 81
+The following option ignores any errors on line 81 in bad.js
 
 ```javascript
-{ "line": 81 }
+{ "file": "bad.js", "line": 81 }
 ```
 
-The following option ignores any errors matching reason anywhere in the file
+The following option ignores any errors matching reason anywhere in bad.js
 
 ```javascript
-{ "reason": "literal notation" }
+{ "file": "bad.js", "reason": "literal notation" }
 ```
+
+The following option ignores any errors matching reason anywhere in any file
+
+```javascript
+{ reason": "literal notation" }
 
 #### JSHint Settings
 
@@ -174,3 +179,10 @@ You can always provide custom JSHint and global comments to the top of each of y
 ```text
 	anvil uninstall anvil.jshint
 ```
+
+## TODOS
+
+* .jshintrc in pwd then all way up, then $HOME
+* Get unit test coverage once Anvil.js allows assertion of logs
+* Make options/globals be on a per folder basis
+
