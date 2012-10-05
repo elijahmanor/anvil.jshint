@@ -18,7 +18,7 @@ var jshintFactory = function( _, anvil ) {
 	return anvil.plugin({
 		name: "anvil.jshint",
 		activity: "pre-process",
-		all: false,
+		all: true, //false,
 		inclusive: false,
 		exclusive: false,
 		breakBuild: true,
@@ -31,6 +31,8 @@ var jshintFactory = function( _, anvil ) {
 		messageFormat: new MessageFormat( "en" ),
 
 		configure: function( config, command, done ) {
+			console.log( "command: " + JSON.stringify( command ) );
+
 			if ( !_.isEmpty( this.config ) ) {
 				if ( this.config.all ) {
 					this.all = true;
@@ -73,6 +75,8 @@ var jshintFactory = function( _, anvil ) {
 				totalErrors = 0,
 				transforms, message;
 
+			console.log( "BEGIN run()" );
+
 			if ( this.inclusive ) {
 				jsFiles = _.filter( anvil.project.files, this.anyFile( this.fileList ) );
 			} else if ( this.all || this.exclusive ) {
@@ -83,6 +87,12 @@ var jshintFactory = function( _, anvil ) {
 					jsFiles = _.reject( jsFiles, this.anyFile( this.fileList ) );
 				}
 			}
+
+			console.log( "inclusive: " + this.inclusive );
+			console.log( "all: " + this.all );
+			console.log( "exclusive: " + this.exclusive );
+			console.log( "anvil.project.files: " + JSON.stringify( anvil.project.files ) );
+			console.log( "jsFiles.length: " + jsFiles.length );
 
 			if ( jsFiles.length > 0 ) {
 				message = this.messageFormat.compile( "Linting {NUM_RESULTS, plural, one{one file} other{# files}}." );
@@ -135,14 +145,16 @@ var jshintFactory = function( _, anvil ) {
 
 		lintContent: function( file, content, done ) {
 			var result = jshint( content, this.settings.options || {}, this.settings.globals || {} ),
-				validErrors = [], ignoredErrors = 0;
+				validErrors = [], ignoredErrors = 0, that = this;
 
 			if ( result ) {
 				anvil.log.event( "No issues Found." );
+				that.log( "No issues Found." );
 			} else {
 				validErrors = this.processErrors( file, jshint.errors, this.ignore );
 				_.each( validErrors, function( error ) {
 					anvil.log.error( error );
+					that.log( error );
 				});
 				message = this.messageFormat.compile( "{NUM_RESULTS, plural, one{# issue} other{# issues}} found." );
 				anvil.log.event( message({ "NUM_RESULTS": validErrors.length }) );
@@ -250,7 +262,9 @@ var jshintFactory = function( _, anvil ) {
 			return ignorable;
 		},
 
-		log: function() {}
+		log: function( message ) {
+			console.log( message );
+		}
 	});
 };
 

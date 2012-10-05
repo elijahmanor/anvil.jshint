@@ -1,0 +1,9 @@
+{
+	"source": "src",
+	"spec": "spec",
+	"output": [ "build" ],
+	"dependencies" : [ "anvil.jshint" ],
+	"anvil.jshint": {
+		"all": true
+	}
+}
