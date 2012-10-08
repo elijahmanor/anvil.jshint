@@ -73,6 +73,8 @@ var jshintFactory = function( _, anvil ) {
 				totalErrors = 0,
 				transforms, message;
 
+			console.log( "running..." );
+
 			if ( this.inclusive ) {
 				jsFiles = _.filter( anvil.project.files, this.anyFile( this.fileList ) );
 			} else if ( this.all || this.exclusive ) {
