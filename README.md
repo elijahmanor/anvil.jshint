@@ -151,6 +151,7 @@ The following option ignores any errors matching reason anywhere in any file
 
 ```javascript
 { reason": "literal notation" }
+```
 
 #### JSHint Settings
 
@@ -177,7 +178,7 @@ You can always provide custom JSHint and global comments to the top of each of y
 ## Uninstallation
 
 ```text
-	anvil uninstall anvil.jshint
+anvil uninstall anvil.jshint
 ```
 
 ## TODOS
