@@ -181,10 +181,10 @@ var jshintFactory = function( _, anvil ) {
 		},
 
 		formatError: function( error, padding ) {
-			return "[L".data + _.lpad( error.line, padding.line, "0" ).data +
-				":C".data + _.lpad( error.character, padding.character, "0" ).data +
-				"] ".data + error.evidence.replace( /^\s*/g, "" ).italic.error + " -> ".data +
-				error.reason.bold.error;
+			return "[L" + _.lpad( error.line, padding.line, "0" ) +
+				":C" + _.lpad( error.character, padding.character, "0" ) +
+				"] " + error.evidence.replace( /^\s*/g, "" ) + " -> " +
+				error.reason;
 		},
 
 		/*
