@@ -1,21 +1,11 @@
 var jshint = require( "jshint" ).JSHINT;
-var colors = require( "colors" );
 var MessageFormat = require( "messageformat" );
-
-colors.setTheme({
-	verbose: "cyan",
-	info: "green",
-	warn: "yellow",
-	debug: "blue",
-	error: "red",
-	data: "grey"
-});
 
 var jshintFactory = function( _, anvil ) {
 	_.str = require( "underscore.string" );
 	_.mixin( _.str.exports() );
 
-	return anvil.plugin({
+	anvil.plugin({
 		name: "anvil.jshint",
 		activity: "pre-process",
 		all: true, //false,
@@ -73,8 +63,6 @@ var jshintFactory = function( _, anvil ) {
 				totalErrors = 0,
 				transforms, message;
 
-			console.log( "running..." );
-
 			if ( this.inclusive ) {
 				jsFiles = _.filter( anvil.project.files, this.anyFile( this.fileList ) );
 			} else if ( this.all || this.exclusive ) {
@@ -114,7 +102,7 @@ var jshintFactory = function( _, anvil ) {
 			return function( file ) {
 				return _.any( list, function( name ) {
 					var alias = anvil.fs.buildPath( [ file.relativePath, file.name ] );
-					return name === alias || ( "/" + name ) == alias;
+					return name === alias || ( "/" + name ) == alias || (new RegExp( name )).test( alias );
 				});
 			};
 		},
@@ -122,7 +110,7 @@ var jshintFactory = function( _, anvil ) {
 		lint: function( file, done ) {
 			var that = this;
 
-			anvil.log.event( "Linting '"+ file.fullPath + "'" );
+			anvil.log.debug( "Linting '"+ file.fullPath + "'" );
 			anvil.fs.read( [ file.fullPath ], function( content, err ) {
 				if ( !err ) {
 					that.lintContent( file, content, function( numberOfErrors ) {
@@ -137,24 +125,23 @@ var jshintFactory = function( _, anvil ) {
 
 		lintContent: function( file, content, done ) {
 			var result = jshint( content, this.settings.options || {}, this.settings.globals || {} ),
-				validErrors = [], ignoredErrors = 0, that = this;
+				validErrors = [], ignoredErrors = 0, that = this, output;
 
 			if ( result ) {
-				anvil.log.event( "No issues Found." );
-				that.log( "No issues Found." );
+				anvil.log.debug( "No issues Found." );
 			} else {
 				validErrors = this.processErrors( file, jshint.errors, this.ignore || [] );
 				_.each( validErrors, function( error ) {
 					anvil.log.error( error );
-					that.log( error );
 				});
 				message = this.messageFormat.compile( "{NUM_RESULTS, plural, one{# issue} other{# issues}} found." );
-				anvil.log.event( message({ "NUM_RESULTS": validErrors.length }) );
+				output = message({ "NUM_RESULTS": validErrors.length });
 				ignoredErrors = jshint.errors.length - validErrors.length;
 				if ( this.ignore.length && ignoredErrors ) {
 					message = this.messageFormat.compile( "{NUM_RESULTS, plural, one{# issue} other{# issues}} ignored." );
-					anvil.log.event( message({ "NUM_RESULTS": ignoredErrors }) );
+					output += " " + message({ "NUM_RESULTS": ignoredErrors });
 				}
+				anvil.log.complete( "Linting Complete: " + output );
 			}
 
 			done( validErrors.length );
@@ -255,7 +242,7 @@ var jshintFactory = function( _, anvil ) {
 		},
 
 		log: function( message ) {
-			console.log( message );
+			// console.log( message );
 		}
 	});
 };
