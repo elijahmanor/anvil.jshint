@@ -1,36 +1,27 @@
-var jshint = require( "jshint" ).JSHINT;
-var colors = require( "colors" );
-var MessageFormat = require( "messageformat" );
-
-colors.setTheme({
-	verbose: "cyan",
-	info: "green",
-	warn: "yellow",
-	debug: "blue",
-	error: "red",
-	data: "grey"
-});
+var jshint;
+var MessageFormat;
+var colors;
 
 var jshintFactory = function( _, anvil ) {
 	_.str = require( "underscore.string" );
 	_.mixin( _.str.exports() );
 
-	return anvil.plugin({
-		name: "anvil.jshint",
-		activity: "pre-process",
-		all: true, //false,
+	var JsHinter = function ( config ) {
+		this.ignore = [];
+		this.fileList = [];
+		this.settings = {}
+	};
+
+	_.extend( JsHinter.prototype, {
+		all: false,
 		inclusive: false,
 		exclusive: false,
 		breakBuild: true,
-		ignore: [],
-		fileList: [],
-		commander: [
-			[ "-hint, --jshint", "JSHint all JavaScript files" ]
-		],
-		settings: {},
-		messageFormat: new MessageFormat( "en" ),
-
+		verbose: false,
 		configure: function( config, command, done ) {
+			if ( command.verbose ) {
+				this.verbose = true;
+			}
 			if ( !_.isEmpty( this.config ) ) {
 				if ( this.config.all ) {
 					this.all = true;
@@ -42,8 +33,7 @@ var jshintFactory = function( _, anvil ) {
 					this.fileList = this.config.exclude;
 				}
 				this.settings = this.getSettings( this.config );
-				this.breakBuild = this.config.breakBuild === false ?
-					this.config.breakBuild : this.breakBuild;
+				this.breakBuild = this.config.breakBuild;
 				this.ignore = this.config.ignore || [];
 			} else if ( command.jshint ) {
 				this.all = true;
@@ -66,19 +56,47 @@ var jshintFactory = function( _, anvil ) {
 			return settings;
 		},
 
-		run: function( done ) {
+		run: function ( done ) {
+			if ( !jshint ) {
+				jshint = require( "jshint" ).JSHINT;
+				MessageFormat = require( "messageformat" );
+				this.messageFormat = new MessageFormat();
+				colors = require( "colors" );
+				colors.setTheme({
+					verbose: "cyan",
+					info: "green",
+					warn: "yellow",
+					debug: "blue",
+					error: "red",
+					data: "grey"
+				});
+			}
+
+			if ( anvil.project.files.length ) {
+				var source = anvil.config.source;
+				var length = source.length;
+				this._run( _.filter( anvil.project.files, function ( file ) {
+					return file.originalPath.substr(0,length) === source;
+				}), done );
+			} else {
+				var self = this;
+				anvil.fs.getFiles( anvil.config.source, anvil.config.source, function ( files ) {
+					self._run( files, done );
+				})
+			}
+		},
+
+		_run: function( projectFiles, done ) {
 			var jsFiles = [],
 				options = {},
 				that = this,
 				totalErrors = 0,
 				transforms, message;
 
-			console.log( "running..." );
-
 			if ( this.inclusive ) {
-				jsFiles = _.filter( anvil.project.files, this.anyFile( this.fileList ) );
+				jsFiles = _.filter( projectFiles, this.anyFile( this.fileList ) );
 			} else if ( this.all || this.exclusive ) {
-				jsFiles = _.filter( anvil.project.files, function( file ) {
+				jsFiles = _.filter( projectFiles, function( file ) {
 					return file.extension() === ".js";
 				});
 				if ( this.exclusive ) {
@@ -87,7 +105,7 @@ var jshintFactory = function( _, anvil ) {
 			}
 
 			if ( jsFiles.length > 0 ) {
-				message = this.messageFormat.compile( "Linting {NUM_RESULTS, plural, one{one file} other{# files}}." );
+				message = this.messageFormat.compile( "Linting {NUM_RESULTS, plural, one{one file} other{# files}}..." );
 				anvil.log.step( message({ "NUM_RESULTS": jsFiles.length }) );
 				transforms = _.map( jsFiles, function( file ) {
 					return function( done ) {
@@ -98,10 +116,19 @@ var jshintFactory = function( _, anvil ) {
 					};
 				});
 				anvil.scheduler.pipeline( undefined, transforms, function() {
-					if ( that.breakBuild === true &&
-						_.isNumber( totalErrors ) && totalErrors > 0 ) {
-						message = that.messageFormat.compile( "project {NUM_RESULTS, plural, one{one error} other{# errors}}!" );
-						anvil.events.raise( "build.stop", message({ "NUM_RESULTS": totalErrors }) );
+					if ( _.isNumber( totalErrors ) && totalErrors > 0 ) {
+						message = that.messageFormat.compile( "{NUM_RESULTS, plural, one{one JSHint error} other{# JSHint errors}} were found." );
+						if ( that.breakBuild ) {
+							anvil.log.error( "Stopping the build because " + message({ "NUM_RESULTS": totalErrors }) );
+							// Eventually we want to just stop the build
+							// anvil.emit( "build.stop", message({ "NUM_RESULTS": totalErrors }) )
+							// For now, just stop everything:
+							anvil.stop( 1 );
+						} else {
+							anvil.log.error(  message({ "NUM_RESULTS": totalErrors }) ); 
+						}
+					} else {
+						anvil.log.complete( "Linting complete, no errors found." );
 					}
 					done();
 				});
@@ -114,7 +141,7 @@ var jshintFactory = function( _, anvil ) {
 			return function( file ) {
 				return _.any( list, function( name ) {
 					var alias = anvil.fs.buildPath( [ file.relativePath, file.name ] );
-					return name === alias || ( "/" + name ) == alias;
+					return name === alias || ( "/" + name ) == alias || (new RegExp( name )).test( alias );
 				});
 			};
 		},
@@ -122,7 +149,7 @@ var jshintFactory = function( _, anvil ) {
 		lint: function( file, done ) {
 			var that = this;
 
-			anvil.log.event( "Linting '"+ file.fullPath + "'" );
+			anvil.log.debug( "Linting '"+ file.fullPath + "'" );
 			anvil.fs.read( [ file.fullPath ], function( content, err ) {
 				if ( !err ) {
 					that.lintContent( file, content, function( numberOfErrors ) {
@@ -137,24 +164,27 @@ var jshintFactory = function( _, anvil ) {
 
 		lintContent: function( file, content, done ) {
 			var result = jshint( content, this.settings.options || {}, this.settings.globals || {} ),
-				validErrors = [], ignoredErrors = 0, that = this;
+				validErrors = [], ignoredErrors = 0, that = this, output;
 
 			if ( result ) {
-				anvil.log.event( "No issues Found." );
-				that.log( "No issues Found." );
+				anvil.log.debug( "No issues Found." );
 			} else {
 				validErrors = this.processErrors( file, jshint.errors, this.ignore || [] );
+				if ( validErrors.length && !this.verbose ) {
+					anvil.log.error( "\t" + ( validErrors.length === 1 ? "Error" : "Errors" ) + " in " + file.fullPath + ":" );
+				}
 				_.each( validErrors, function( error ) {
-					anvil.log.error( error );
-					that.log( error );
+					anvil.log.error( "\t  " + error );
 				});
 				message = this.messageFormat.compile( "{NUM_RESULTS, plural, one{# issue} other{# issues}} found." );
-				anvil.log.event( message({ "NUM_RESULTS": validErrors.length }) );
+				output = message({ "NUM_RESULTS": validErrors.length });
 				ignoredErrors = jshint.errors.length - validErrors.length;
 				if ( this.ignore.length && ignoredErrors ) {
 					message = this.messageFormat.compile( "{NUM_RESULTS, plural, one{# issue} other{# issues}} ignored." );
-					anvil.log.event( message({ "NUM_RESULTS": ignoredErrors }) );
+					output += " " + message({ "NUM_RESULTS": ignoredErrors });
 				}
+				
+				anvil.log.error( "\t" + output + "\n" );
 			}
 
 			done( validErrors.length );
@@ -252,10 +282,56 @@ var jshintFactory = function( _, anvil ) {
 			}
 
 			return ignorable;
+		}
+	});
+
+	var jsHinter;
+
+	anvil.command({
+		name: "anvil.jshint.command",
+		commander: {
+			"lint": {
+				action: "lint",
+				description: "Run just jshint without a build"
+			}
+		},
+		config: {
+			breakBuild: false
+		},
+		configure: function (config, commander, done ) {
+			if ( commander.lint ) {
+				jsHinter = new JsHinter();
+				jsHinter.config = _.extend( {}, this.config, config[ "anvil.jshint" ] );
+				jsHinter.configure.apply( jsHinter, arguments );
+			} else {
+				done();
+			}
+		},
+		lint: function ( commander, done ) {
+			jsHinter.run.call( jsHinter, done );
+		}
+	});
+
+	anvil.plugin({
+		name: "anvil.jshint",
+		activity: "pre-process",
+
+		commander: [
+			[ "-H, --jshint", "JSHint all JavaScript files" ]
+		],
+
+		config: {
+			breakBuild: false
 		},
 
-		log: function( message ) {
-			console.log( message );
+		configure: function ( config ) {
+			jsHinter = new JsHinter();
+			jsHinter.config = _.extend( {}, this.config, config[ "anvil.jshint" ] );
+			jsHinter.configure.apply( jsHinter, arguments );
+		},
+
+		run: function ( done ) {
+			jsHinter.run.call( jsHinter, done );
 		}
 	});
 };

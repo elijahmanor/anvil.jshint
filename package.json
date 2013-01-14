@@ -15,8 +15,8 @@
 	"dependencies": {
 		"jshint": ">=0.9.1",
 		"underscore.string": "2.3.0",
-		"colors": "0.6.0-1",
-		"messageformat": "0.1.4"
+		"messageformat": ">=0.1.4",
+		"colors": "0.6.x"
 	},
 	"devDependencies": {
 	},
